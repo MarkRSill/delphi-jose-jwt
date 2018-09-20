@@ -52,6 +52,12 @@ type
     lblHeader: TLabel;
     lblPayload: TLabel;
     lblSignature: TLabel;
+    VerifySig: TFlowPanel;
+    HSVerifySig: TPanel;
+    RSVerifySig: TPanel;
+    lblRSA: TLabel;
+    RSAPublicKey: TMemo;
+    RSAPrivateKey: TMemo;
     procedure cbbDebuggerAlgoChange(Sender: TObject);
     procedure chkKeyBase64Click(Sender: TObject);
     procedure edtKeyChange(Sender: TObject);
@@ -59,6 +65,9 @@ type
     procedure FormCreate(Sender: TObject);
     procedure memoHeaderChange(Sender: TObject);
     procedure memoPayloadChange(Sender: TObject);
+    procedure VerifySigResize(Sender: TObject);
+    procedure richEncodedChange(Sender: TObject);
+    procedure RSAPrivateKeyChange(Sender: TObject);
   private
     FJWT: TJWT;
     FAlg: TJOSEAlgorithmId;
@@ -71,6 +80,7 @@ type
     procedure SetStatus(AVerified: Boolean);
     procedure SetErrorJSON;
     function VerifyToken(AKey: TJWK): Boolean;
+    procedure DoVerifyToken;
     procedure WriteDefault;
   public
     { Public declarations }
@@ -81,6 +91,9 @@ var
 
 implementation
 
+uses
+  System.NetEncoding;
+
 {$R *.dfm}
 
 procedure TfrmDebugger.cbbDebuggerAlgoChange(Sender: TObject);
@@ -89,6 +102,21 @@ begin
     0: FAlg := TJOSEAlgorithmId.HS256;
     1: FAlg := TJOSEAlgorithmId.HS384;
     2: FAlg := TJOSEAlgorithmId.HS512;
+    3: FAlg := TJOSEAlgorithmId.RS256;
+    4: FAlg := TJOSEAlgorithmId.RS384;
+    5: FAlg := TJOSEAlgorithmId.RS512;
+  end;
+  case cbbDebuggerAlgo.ItemIndex of
+    0..2: begin
+      ClientHeight := 578;
+      HSVerifySig.Visible := True;
+      RSVerifySig.Visible := False;
+    end;
+    3..5: begin
+      ClientHeight := 778;
+      HSVerifySig.Visible := False;
+      RSVerifySig.Visible := True;
+    end;
   end;
   GenerateToken;
 end;
@@ -98,10 +126,34 @@ begin
   GenerateToken;
 end;
 
+procedure TfrmDebugger.DoVerifyToken;
+var
+  LKeyPub: TJWK;
+begin
+  case cbbDebuggerAlgo.ItemIndex of
+    0..2: begin
+      if chkKeyBase64.Checked then
+        LKeyPub := TJWK.Create(TBase64.Decode(edtKey.Text))
+      else
+        LKeyPub := TJWK.Create(edtKey.Text);
+    end;
+    else LKeyPub := TJWK.Create(RSAPublicKey.Text);
+  end;
+
+  try
+    SetStatus(VerifyToken(LKeyPub));
+  finally
+    LKeyPub.Free;
+  end;
+end;
+
 procedure TfrmDebugger.edtKeyChange(Sender: TObject);
 var
   LKey: TJWK;
 begin
+  if richEncoded.Tag <> 0 then
+    Exit;
+
   if chkKeyBase64.Checked then
     LKey := TJWK.Create(TBase64.Decode(edtKey.Text))
   else
@@ -138,44 +190,63 @@ procedure TfrmDebugger.GenerateToken;
 var
   LSigner: TJWS;
   LKey: TJWK;
+  LKeyPub: TJWK;
 begin
-  richEncoded.Lines.Clear;
-  if Assigned(FJWT.Header.JSON) and Assigned(FJWT.Claims.JSON) then
-  begin
-    richEncoded.Color := clWindow;
+  richEncoded.Tag := 1;
+  try
+    richEncoded.Lines.Clear;
+    if Assigned(FJWT.Header.JSON) and Assigned(FJWT.Claims.JSON) then
+    begin
+      richEncoded.Color := clWindow;
 
-    LSigner := TJWS.Create(FJWT);
+      LSigner := TJWS.Create(FJWT);
 
-    if chkKeyBase64.Checked then
-      LKey := TJWK.Create(TBase64.Decode(edtKey.Text))
+      case cbbDebuggerAlgo.ItemIndex of
+        0..2: begin
+          if chkKeyBase64.Checked then
+            LKey := TJWK.Create(TBase64.Decode(edtKey.Text))
+          else
+            LKey := TJWK.Create(edtKey.Text);
+          LKeyPub := LKey;
+        end;
+        3..5: begin
+          LKey := TJWK.Create(RSAPrivateKey.Text);
+          LKeyPub := TJWK.Create(RSAPublicKey.Text);
+        end;
+      end;
+
+      try
+        LSigner.SkipKeyValidation := True;
+        LSigner.Sign(LKey, FAlg);
+
+        WriteCompactHeader(LSigner.Header);
+        WriteCompactSeparator;
+        WriteCompactClaims(LSigner.Payload);
+        WriteCompactSeparator;
+        WriteCompactSignature(LSigner.Signature);
+
+        SetStatus(VerifyToken(LKeyPub));
+      finally
+        if LKeyPub <> LKey then
+          LKeyPub.Free;
+        LKey.Free;
+        LSigner.Free;
+      end;
+    end
     else
-      LKey := TJWK.Create(edtKey.Text);
-
-    try
-      LSigner.SkipKeyValidation := True;
-      LSigner.Sign(LKey, FAlg);
-
-      WriteCompactHeader(LSigner.Header);
-      WriteCompactSeparator;
-      WriteCompactClaims(LSigner.Payload);
-      WriteCompactSeparator;
-      WriteCompactSignature(LSigner.Signature);
-
-      SetStatus(VerifyToken(LKey));
-    finally
-      LKey.Free;
-      LSigner.Free;
+    begin
+      richEncoded.Color := $00CACAFF;
+      SetErrorJSON;
     end;
-  end
-  else
-  begin
-    richEncoded.Color := $00CACAFF;
-    SetErrorJSON;
+  finally
+    richEncoded.Tag := 0;
   end;
 end;
 
 procedure TfrmDebugger.memoHeaderChange(Sender: TObject);
 begin
+  if richEncoded.Tag <> 0 then
+    Exit;
   FJWT.Header.JSON.Free;
   FJWT.Header.JSON := TJSONObject(TJSONObject.ParseJSONValue((Sender as TMemo).Lines.Text));
   GenerateToken;
@@ -183,9 +254,56 @@ end;
 
 procedure TfrmDebugger.memoPayloadChange(Sender: TObject);
 begin
+  if richEncoded.Tag <> 0 then
+    Exit;
   FJWT.Claims.JSON.Free;
   FJWT.Claims.JSON := TJSONObject(TJSONObject.ParseJSONValue((Sender as TMemo).Lines.Text));
   GenerateToken;
+end;
+
+procedure TfrmDebugger.richEncodedChange(Sender: TObject);
+var
+  token: string;
+  parts: TArray<string>;
+  json: TJSONValue;
+begin
+  if richEncoded.Tag <> 0 then
+    Exit;
+
+  richEncoded.Tag := 2;
+  try
+    // decode token into Header and Payload
+    token := richEncoded.Text;
+    parts := token.Split(['.']);
+
+    if Length(Parts) = 3 then
+    try
+      richEncoded.Lines.Clear;
+      WriteCompactHeader(parts[0]);
+      WriteCompactSeparator;
+      WriteCompactClaims(parts[1]);
+      WriteCompactSeparator;
+      WriteCompactSignature(parts[2]);
+
+      memoHeader.Text := TNetEncoding.Base64.Decode(parts[0]);
+      memoPayload.Text := TNetEncoding.Base64.Decode(parts[1]);
+    except
+    end;
+
+    DoVerifyToken;
+  finally
+    richEncoded.Tag := 0;
+  end;
+end;
+
+procedure TfrmDebugger.RSAPrivateKeyChange(Sender: TObject);
+begin
+  if richEncoded.Tag <> 0 then
+    Exit;
+  if (RSAPublicKey.Text > '') and (RSAPrivateKey.Text > '') then
+    GenerateToken
+  else if RSAPublicKey.Text > '' then
+    DoVerifyToken;
 end;
 
 procedure TfrmDebugger.SetErrorJSON;
@@ -206,6 +324,11 @@ begin
     shpStatus.Brush.Color := clRed;
     lblStatus.Caption := 'Invalid Signature';
   end;
+end;
+
+procedure TfrmDebugger.VerifySigResize(Sender: TObject);
+begin
+  RSVerifySig.Width := VerifySig.Width - 2;
 end;
 
 function TfrmDebugger.VerifyToken(AKey: TJWK): Boolean;
@@ -262,14 +385,19 @@ end;
 
 procedure TfrmDebugger.WriteDefault;
 begin
-  richEncoded.Lines.Clear;
-  WriteCompactHeader('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
-  WriteCompactSeparator;
-  WriteCompactClaims('eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9');
-  WriteCompactSeparator;
-  WriteCompactSignature('TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ');
+  richEncoded.Tag := 1;
+  try
+    richEncoded.Lines.Clear;
+    WriteCompactHeader('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+    WriteCompactSeparator;
+    WriteCompactClaims('eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9');
+    WriteCompactSeparator;
+    WriteCompactSignature('TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ');
 
-  SetStatus(True);
+    SetStatus(True);
+  finally
+    richEncoded.Tag := 0;
+  end;
 end;
 
 end.

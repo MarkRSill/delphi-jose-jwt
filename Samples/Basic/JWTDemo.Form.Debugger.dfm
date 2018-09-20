@@ -59,30 +59,13 @@ object frmDebugger: TfrmDebugger
     Font.Style = [fsBold]
     ParentFont = False
   end
-  object lblHMAC: TLabel
-    Left = 463
-    Top = 374
-    Width = 297
-    Height = 114
-    Anchors = [akLeft, akBottom]
-    Caption = 
-      'HMACSHA256('#13#10'  base64UrlEncode(header) + "." +'#13#10'  base64UrlEncod' +
-      'e(payload),'#13#10#13#10#13#10')'
-    Font.Charset = ANSI_CHARSET
-    Font.Color = clTeal
-    Font.Height = -16
-    Font.Name = 'Consolas'
-    Font.Style = []
-    ParentFont = False
-  end
   object shpStatus: TShape
     Left = 8
     Top = 505
     Width = 757
     Height = 65
-    Anchors = [akLeft, akRight]
+    Anchors = [akLeft, akRight, akBottom]
     Brush.Color = 16107079
-    ExplicitWidth = 753
   end
   object lblStatus: TLabel
     Left = 265
@@ -97,7 +80,6 @@ object frmDebugger: TfrmDebugger
     Font.Name = 'Verdana'
     Font.Style = [fsBold]
     ParentFont = False
-    ExplicitLeft = 263
   end
   object lblHeader: TLabel
     Left = 463
@@ -130,7 +112,6 @@ object frmDebugger: TfrmDebugger
     Top = 352
     Width = 97
     Height = 16
-    Anchors = [akLeft, akBottom]
     Caption = 'Verify Signature:'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clGray
@@ -165,7 +146,7 @@ object frmDebugger: TfrmDebugger
     Top = 224
     Width = 302
     Height = 123
-    Anchors = [akLeft, akTop, akRight, akBottom]
+    Anchors = [akLeft, akTop, akRight]
     Font.Charset = ANSI_CHARSET
     Font.Color = clFuchsia
     Font.Height = -16
@@ -200,6 +181,7 @@ object frmDebugger: TfrmDebugger
     TabOrder = 2
     WantReturns = False
     Zoom = 100
+    OnChange = richEncodedChange
   end
   object cbbDebuggerAlgo: TComboBox
     Left = 341
@@ -215,43 +197,139 @@ object frmDebugger: TfrmDebugger
     Items.Strings = (
       'HS256'
       'HS384'
-      'HS512')
+      'HS512'
+      'RS256'
+      'RS384'
+      'RS512')
   end
-  object edtKey: TEdit
-    Left = 481
-    Top = 436
-    Width = 279
-    Height = 27
-    Anchors = [akLeft, akBottom]
-    Font.Charset = ANSI_CHARSET
-    Font.Color = clTeal
-    Font.Height = -16
-    Font.Name = 'Consolas'
-    Font.Style = []
-    ParentFont = False
+  object VerifySig: TFlowPanel
+    Left = 459
+    Top = 371
+    Width = 311
+    Height = 134
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
     TabOrder = 4
-    Text = 'secret'
-    OnChange = edtKeyChange
-  end
-  object chkKeyBase64: TCheckBox
-    Left = 481
-    Top = 471
-    Width = 238
-    Height = 17
-    ParentCustomHint = False
-    Anchors = [akLeft, akBottom]
-    Caption = 'secret base64 encoded'
-    Color = clBtnFace
-    Ctl3D = True
-    Font.Charset = ANSI_CHARSET
-    Font.Color = clTeal
-    Font.Height = -16
-    Font.Name = 'Consolas'
-    Font.Style = [fsBold]
-    ParentColor = False
-    ParentCtl3D = False
-    ParentFont = False
-    TabOrder = 5
-    OnClick = chkKeyBase64Click
+    OnResize = VerifySigResize
+    DesignSize = (
+      311
+      134)
+    object HSVerifySig: TPanel
+      Left = 0
+      Top = 0
+      Width = 308
+      Height = 128
+      BevelOuter = bvNone
+      TabOrder = 0
+      object lblHMAC: TLabel
+        Left = 3
+        Top = 3
+        Width = 297
+        Height = 114
+        Caption = 
+          'HMACSHA256('#13#10'  base64UrlEncode(header) + "." +'#13#10'  base64UrlEncod' +
+          'e(payload),'#13#10#13#10#13#10')'
+        Font.Charset = ANSI_CHARSET
+        Font.Color = clTeal
+        Font.Height = -16
+        Font.Name = 'Consolas'
+        Font.Style = []
+        ParentFont = False
+      end
+      object chkKeyBase64: TCheckBox
+        Left = 22
+        Top = 100
+        Width = 238
+        Height = 17
+        ParentCustomHint = False
+        Caption = 'secret base64 encoded'
+        Color = clBtnFace
+        Ctl3D = True
+        Font.Charset = ANSI_CHARSET
+        Font.Color = clTeal
+        Font.Height = -16
+        Font.Name = 'Consolas'
+        Font.Style = [fsBold]
+        ParentColor = False
+        ParentCtl3D = False
+        ParentFont = False
+        TabOrder = 0
+        OnClick = chkKeyBase64Click
+      end
+      object edtKey: TEdit
+        Left = 22
+        Top = 64
+        Width = 279
+        Height = 27
+        Font.Charset = ANSI_CHARSET
+        Font.Color = clTeal
+        Font.Height = -16
+        Font.Name = 'Consolas'
+        Font.Style = []
+        ParentFont = False
+        TabOrder = 1
+        Text = 'secret'
+        OnChange = edtKeyChange
+      end
+    end
+    object RSVerifySig: TPanel
+      Left = 0
+      Top = 128
+      Width = 308
+      Height = 236
+      Anchors = [akLeft, akTop, akRight]
+      BevelOuter = bvNone
+      TabOrder = 1
+      DesignSize = (
+        308
+        236)
+      object lblRSA: TLabel
+        Left = 3
+        Top = 3
+        Width = 297
+        Height = 228
+        Caption = 
+          'RSASHA256('#13#10'  base64UrlEncode(header) + "." +'#13#10'  base64UrlEncode' +
+          '(payload),'#13#10#13#10#13#10#13#10','#13#10#13#10#13#10#13#10#13#10')'
+        Font.Charset = ANSI_CHARSET
+        Font.Color = clTeal
+        Font.Height = -16
+        Font.Name = 'Consolas'
+        Font.Style = []
+        ParentFont = False
+      end
+      object RSAPublicKey: TMemo
+        Left = 21
+        Top = 63
+        Width = 279
+        Height = 61
+        Anchors = [akLeft, akTop, akRight]
+        Font.Charset = ANSI_CHARSET
+        Font.Color = clTeal
+        Font.Height = -16
+        Font.Name = 'Consolas'
+        Font.Style = []
+        ParentFont = False
+        TabOrder = 0
+        WordWrap = False
+        OnChange = RSAPrivateKeyChange
+      end
+      object RSAPrivateKey: TMemo
+        Left = 21
+        Top = 142
+        Width = 279
+        Height = 71
+        Anchors = [akLeft, akTop, akRight]
+        Font.Charset = ANSI_CHARSET
+        Font.Color = clTeal
+        Font.Height = -16
+        Font.Name = 'Consolas'
+        Font.Style = []
+        ParentFont = False
+        TabOrder = 1
+        WordWrap = False
+        OnChange = RSAPrivateKeyChange
+      end
+    end
   end
 end
