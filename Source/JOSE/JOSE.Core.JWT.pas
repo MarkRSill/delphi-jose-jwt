@@ -102,6 +102,13 @@ type
     function ClaimExists(const AClaimName: string): Boolean;
     function GetAudienceArray: TArray<string>;
     procedure SetAudienceArray(const Value: TArray<string>);
+
+    function GetExpirationMS: Int64;
+    function GetIssuedAtMS: Int64;
+    function GetNotBeforeMS: Int64;
+    procedure SetExpirationMS(const Value: Int64);
+    procedure SetIssuedAtMS(const Value: Int64);
+    procedure SetNotBeforeMS(const Value: Int64);
   public
     constructor Create; virtual;
     procedure SetClaimOfType<T>(const AName: string; const AValue: T);
@@ -122,6 +129,10 @@ type
     property HasNotBefore: Boolean read GetHasNotBefore;
     property Subject: string read GetSubject write SetSubject;
     property HasSubject: Boolean read GetHasSubject;
+
+    property IssuedAtMS: Int64 read GetIssuedAtMS write SetIssuedAtMS;
+    property ExpirationMS: Int64 read GetExpirationMS write SetExpirationMS;
+    property NotBeforeMS: Int64 read GetNotBeforeMS write SetNotBeforeMS;
   end;
 
   TJWTClaimsClass = class of TJWTClaims;
@@ -234,6 +245,11 @@ begin
   Result := TJSONUtils.GetJSONValueAsEpoch(TReservedClaimNames.EXPIRATION, FJSON);
 end;
 
+function TJWTClaims.GetExpirationMS: Int64;
+begin
+  Result := TJSONUtils.GetJSONValueInt64(TReservedClaimNames.EXPIRATION, FJSON).AsInt64;
+end;
+
 function TJWTClaims.GetHasAudience: Boolean;
 begin
   Result := ClaimExists(TReservedClaimNames.AUDIENCE);
@@ -274,6 +290,11 @@ begin
   Result := TJSONUtils.GetJSONValueAsEpoch(TReservedClaimNames.ISSUED_AT, FJSON);
 end;
 
+function TJWTClaims.GetIssuedAtMS: Int64;
+begin
+  Result := TJSONUtils.GetJSONValueInt64(TReservedClaimNames.ISSUED_AT, FJSON).AsInt64;
+end;
+
 function TJWTClaims.GetIssuer: string;
 begin
   Result := TJSONUtils.GetJSONValue(TReservedClaimNames.ISSUER, FJSON).AsString;
@@ -287,6 +308,11 @@ end;
 function TJWTClaims.GetNotBefore: TDateTime;
 begin
   Result := TJSONUtils.GetJSONValueAsEpoch(TReservedClaimNames.NOT_BEFORE, FJSON);
+end;
+
+function TJWTClaims.GetNotBeforeMS: Int64;
+begin
+  Result := TJSONUtils.GetJSONValueInt64(TReservedClaimNames.NOT_BEFORE, FJSON).AsInt64;
 end;
 
 function TJWTClaims.GetSubject: string;
@@ -335,12 +361,28 @@ begin
     TJSONUtils.SetJSONValueFrom<TDateTime>(TReservedClaimNames.EXPIRATION, Value, FJSON);
 end;
 
+procedure TJWTClaims.SetExpirationMS(const Value: Int64);
+begin
+  if Value = 0 then
+    TJSONUtils.RemoveJSONNode(TReservedClaimNames.EXPIRATION, FJSON)
+  else
+    TJSONUtils.SetJSONValueFrom<Int64>(TReservedClaimNames.EXPIRATION, Value, FJSON);
+end;
+
 procedure TJWTClaims.SetIssuedAt(Value: TDateTime);
 begin
   if Value = 0 then
     TJSONUtils.RemoveJSONNode(TReservedClaimNames.ISSUED_AT, FJSON)
   else
     TJSONUtils.SetJSONValueFrom<TDateTime>(TReservedClaimNames.ISSUED_AT, Value, FJSON);
+end;
+
+procedure TJWTClaims.SetIssuedAtMS(const Value: Int64);
+begin
+  if Value = 0 then
+    TJSONUtils.RemoveJSONNode(TReservedClaimNames.ISSUED_AT, FJSON)
+  else
+    TJSONUtils.SetJSONValueFrom<Int64>(TReservedClaimNames.ISSUED_AT, Value, FJSON);
 end;
 
 procedure TJWTClaims.SetIssuer(Value: string);
@@ -360,6 +402,14 @@ begin
 end;
 
 procedure TJWTClaims.SetNotBefore(Value: TDateTime);
+begin
+  if Value = 0 then
+    TJSONUtils.RemoveJSONNode(TReservedClaimNames.NOT_BEFORE, FJSON)
+  else
+    TJSONUtils.SetJSONValueFrom<TDateTime>(TReservedClaimNames.NOT_BEFORE, Value, FJSON);
+end;
+
+procedure TJWTClaims.SetNotBeforeMS(const Value: Int64);
 begin
   if Value = 0 then
     TJSONUtils.RemoveJSONNode(TReservedClaimNames.NOT_BEFORE, FJSON)
