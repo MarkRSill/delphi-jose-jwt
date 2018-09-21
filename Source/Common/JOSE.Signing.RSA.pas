@@ -183,7 +183,7 @@ var
   LPubKeyBIO: pBIO;
   LPubKey: pEVP_PKEY;
   LRsa: pRSA;
-  LByte: string;
+//LByte: string;
   LCtx: PEVP_MD_CTX;
   LSha: PEVP_MD;
 begin
@@ -229,8 +229,8 @@ begin
           if EVP_DigestVerifyUpdate( LCtx, @AInput[0], Length(AInput) ) <> 1 then
             raise Exception.Create('[RSA] Unable to update context with payload: ' + ERR_GetErrorMessage_OpenSSL);
 
-          LByte := IntToStr(ASignature[0]);
-          Result := EVP_DigestVerifyFinal( LCtx, @LByte, Length(ASignature) ) = 1;
+        //LByte := IntToStr(ASignature[0]);
+          Result := EVP_DigestVerifyFinal( LCtx, PAnsiChar(@ASignature[0]){@LByte}, Length(ASignature) ) = 1;
         finally
           _EVP_MD_CTX_destroy(LCtx);
         end;
